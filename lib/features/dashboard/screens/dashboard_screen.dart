@@ -1,7 +1,12 @@
 import 'package:flutter/material.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../activity_history/screens/activity_history_screen.dart';
 import '../../run_tracking/screens/live_run_screen.dart';
 import '../../territory_map/screens/territory_map_screen.dart';
+import '../../gamification/screens/profile_ranking_screen.dart';
+import '../../gamification/screens/badges_achievements_screen.dart';
+import '../../gamification/screens/territory_challenges_screen.dart';
+import '../../gamification/screens/friends_territory_feed_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -17,8 +22,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
     const _DashboardContent(),
     const TerritoryMapScreen(),
     const Center(child: Text("Start a run from the Dashboard!")),
-    const Center(child: Text("Badges Screen (Phase 2)")),
-    const Center(child: Text("Profile (Phase 2)")),
+    const BadgesAchievementsScreen(),
+    const ProfileRankingScreen(),
   ];
 
   @override
@@ -191,14 +196,35 @@ class _DashboardContent extends StatelessWidget {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        _buildActionCard(context, Icons.history, 'History', () {}),
+        _buildActionCard(context, Icons.history, 'History', () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => const ActivityHistoryScreen(),
+            ),
+          );
+        }),
         _buildActionCard(
           context,
           Icons.emoji_events_outlined,
           'Challenges',
-          () {},
+          () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => const TerritoryChallengesScreen(),
+              ),
+            );
+          },
         ),
-        _buildActionCard(context, Icons.group_outlined, 'Friends', () {}),
+        _buildActionCard(context, Icons.group_outlined, 'Friends', () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => const FriendsTerritoryFeedScreen(),
+            ),
+          );
+        }),
       ],
     );
   }

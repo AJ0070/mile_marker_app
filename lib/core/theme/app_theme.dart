@@ -11,9 +11,14 @@ class AppTheme {
   ); // Deep premium dark background
   static const Color surface = Color(0xFF1E1E1E);
   static const Color surfaceLight = Color(0xFF2C2C2C);
+  static const Color surfaceHighlight = Color(0xFF3C3C3C);
 
   static const Color textPrimary = Colors.white;
   static const Color textSecondary = Color(0xFFA0A0A0);
+
+  // Additional Brand Colors
+  static const Color secondary = Color(0xFF00E5FF);
+  static const Color tertiary = Color(0xFFFF0055);
 
   // Map Colors
   static const Color territoryExploredColor = Color(0xFFE5FF00);

@@ -1,20 +1,23 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../data/models/run_model.dart';
+import '../../../data/providers/app_providers.dart';
+import '../providers/run_tracking_provider.dart';
 
-class LiveRunScreen extends StatefulWidget {
+class LiveRunScreen extends ConsumerStatefulWidget {
   const LiveRunScreen({super.key});
 
   @override
-  State<LiveRunScreen> createState() => _LiveRunScreenState();
+  ConsumerState<LiveRunScreen> createState() => _LiveRunScreenState();
 }
 
-class _LiveRunScreenState extends State<LiveRunScreen> {
-  bool _isTracking = false;
+class _LiveRunScreenState extends ConsumerState<LiveRunScreen> {
   bool _isLoading = true;
-  final List<LatLng> _routeMap = [];
   final MapController _mapController = MapController();
   LatLng? _currentLocation;
 
@@ -65,9 +68,6 @@ class _LiveRunScreenState extends State<LiveRunScreen> {
       if (!mounted) return;
       setState(() {
         _currentLocation = LatLng(position.latitude, position.longitude);
-        if (_isTracking && _currentLocation != null) {
-          _routeMap.add(_currentLocation!);
-        }
       });
       try {
         _mapController.move(_currentLocation!, 16.0);
@@ -77,18 +77,60 @@ class _LiveRunScreenState extends State<LiveRunScreen> {
     });
   }
 
-  void _toggleTracking() {
-    if (_currentLocation == null) return;
-    setState(() {
-      _isTracking = !_isTracking;
-      if (_isTracking && _routeMap.isEmpty) {
-        _routeMap.add(_currentLocation!);
+  void _toggleTracking(bool isTracking) async {
+    if (isTracking) {
+      // STOPPING the run:
+      final currentState = ref.read(runTrackingProvider);
+
+      // Stop tracking math
+      ref.read(runTrackingProvider.notifier).stopRun();
+
+      // Only save if they actually moved some distance (e.g., > 10 meters)
+      // Otherwise avoid littering DB with 0km runs
+      if (currentState.distanceInMeters >= 10) {
+        final pathJson = jsonEncode(
+          currentState.routeMap
+              .map(
+                (latLng) => {'lat': latLng.latitude, 'lng': latLng.longitude},
+              )
+              .toList(),
+        );
+
+        final runModel = RunModel()
+          ..startTime = DateTime.now().subtract(
+            Duration(seconds: currentState.durationInSeconds),
+          )
+          ..endTime = DateTime.now()
+          ..distanceInMeters = currentState.distanceInMeters
+          ..durationInSeconds = currentState.durationInSeconds
+          ..pathJson = pathJson;
+
+        final localStorage = ref.read(localStorageProvider);
+        await localStorage.saveRun(runModel);
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Run saved to Activity History!')),
+          );
+        }
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Run discarded (Distance too short).'),
+            ),
+          );
+        }
       }
-    });
+    } else {
+      // STARTING the run:
+      ref.read(runTrackingProvider.notifier).startRun();
+    }
   }
 
   @override
   Widget build(BuildContext context) {
+    final trackingState = ref.watch(runTrackingProvider);
     return Scaffold(
       appBar: AppBar(
         title: const Text('Live Tracking'),
@@ -145,11 +187,12 @@ class _LiveRunScreenState extends State<LiveRunScreen> {
                     ),
                     PolylineLayer(
                       polylines: [
-                        Polyline(
-                          points: _routeMap,
-                          strokeWidth: 6.0,
-                          color: AppTheme.mapTrailColor,
-                        ),
+                        if (trackingState.routeMap.isNotEmpty)
+                          Polyline(
+                            points: trackingState.routeMap,
+                            strokeWidth: 6.0,
+                            color: AppTheme.mapTrailColor,
+                          ),
                       ],
                     ),
                     MarkerLayer(
@@ -198,9 +241,21 @@ class _LiveRunScreenState extends State<LiveRunScreen> {
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                           children: [
-                            _buildRunStat('Distance', '1.2', 'km'),
-                            _buildRunStat('Time', '08:45', 'min'),
-                            _buildRunStat('Pace', '5:30', '/km'),
+                            _buildRunStat(
+                              'Distance',
+                              trackingState.distanceInKm.toStringAsFixed(2),
+                              'km',
+                            ),
+                            _buildRunStat(
+                              'Time',
+                              trackingState.formattedTime,
+                              'min',
+                            ),
+                            _buildRunStat(
+                              'Pace',
+                              trackingState.formattedPace,
+                              '/km',
+                            ),
                           ],
                         ),
                         const SizedBox(height: 32),
@@ -208,16 +263,21 @@ class _LiveRunScreenState extends State<LiveRunScreen> {
                           width: double.infinity,
                           height: 56,
                           child: ElevatedButton(
-                            onPressed: _toggleTracking,
+                            onPressed: () =>
+                                _toggleTracking(trackingState.isTracking),
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: _isTracking
+                              backgroundColor: trackingState.isTracking
                                   ? Colors.redAccent
                                   : AppTheme.primary,
-                              foregroundColor: _isTracking
+                              foregroundColor: trackingState.isTracking
                                   ? Colors.white
                                   : AppTheme.background,
                             ),
-                            child: Text(_isTracking ? 'STOP RUN' : 'START RUN'),
+                            child: Text(
+                              trackingState.isTracking
+                                  ? 'STOP RUN'
+                                  : 'START RUN',
+                            ),
                           ),
                         ),
                       ],

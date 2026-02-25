@@ -74,30 +74,16 @@ class _TerritoryMapScreenState extends ConsumerState<TerritoryMapScreen> {
                 options: const MapOptions(
                   initialCenter: LatLng(51.5, -0.09), // Default location
                   initialZoom: 14.0,
+                  interactionOptions: InteractionOptions(
+                    flags: InteractiveFlag.all,
+                  ),
                 ),
                 children: [
                   TileLayer(
                     urlTemplate:
-                        'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                    userAgentPackageName: 'com.example.mile_marker',
-                    tileBuilder: (context, widget, tile) {
-                      return ColorFiltered(
-                        colorFilter: const ColorFilter.mode(
-                          Colors.black87, // Very dark base map to make neon pop
-                          BlendMode.darken,
-                        ),
-                        child: ColorFiltered(
-                          colorFilter: const ColorFilter.matrix([
-                            // Grey scale filter
-                            0.2126, 0.7152, 0.0722, 0.0, 0.0,
-                            0.2126, 0.7152, 0.0722, 0.0, 0.0,
-                            0.2126, 0.7152, 0.0722, 0.0, 0.0,
-                            0.0, 0.0, 0.0, 1.0, 0.0,
-                          ]),
-                          child: widget,
-                        ),
-                      );
-                    },
+                        'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png',
+                    subdomains: const ['a', 'b', 'c', 'd'],
+                    userAgentPackageName: 'dev.jashambaliya.milemarker',
                   ),
                   PolygonLayer(polygons: polygons),
                 ],
